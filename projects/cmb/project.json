@@ -1,0 +1,100 @@
+{
+  "name": "cmb",
+  "title": "레인보우TV",
+  "base": "develop-sixth",
+  "server": "dev",
+  "accountsEnv": "~/.config/cmb-dev/accounts.env",
+  "accountKeys": [
+    "CMB_DEV_USER_ID",
+    "CMB_DEV_USER_PW",
+    "CMB_DEV_ADMIN_ID",
+    "CMB_DEV_ADMIN_PW",
+    "CMB_DEV_ADMIN_OTP"
+  ],
+  "blockHosts": "https://(java-api|api|apiv2|stats|wapi|alarm|alarmv2)\\.cmbrainbowtv\\.co\\.kr/",
+  "watchHostSuffix": "cmbrainbowtv.co.kr",
+  "reposRoot": "~/projects",
+  "adb": "/mnt/c/Users/HAMA/AppData/Local/Android/Sdk/platform-tools/adb.exe",
+  "apps": {
+    "web": {
+      "label": "웹",
+      "repo": "rainbow-vue-web",
+      "kind": "web",
+      "port": 5100,
+      "serve": "npx vite --host 127.0.0.1 --port {port} --strictPort"
+    },
+    "webmobile": {
+      "label": "모바일웹",
+      "repo": "rainbow-vue-webmobile",
+      "kind": "web-mobile",
+      "port": 5101,
+      "serve": "npx vite --host 127.0.0.1 --port {port} --strictPort",
+      "note": "데스크톱 UA로 열면 웹 도메인으로 넘어가므로 모바일 기기(devices['iPhone 13'])로 연다."
+    },
+    "ctv": {
+      "label": "레CTV",
+      "repo": "rainbow-vue-app",
+      "kind": "web-tv",
+      "port": 5102,
+      "serve": "npx vite --host 127.0.0.1 --port {port} --strictPort",
+      "note": "webOS 전역 객체를 initScript 로 흉내 낸다. 메뉴는 클릭이 아니라 포커스로 이동한다.",
+      "devPatches": [
+        {
+          "file": "src/api/config.js",
+          "from": "let isDev = false",
+          "to": "let isDev = true // QA local only",
+          "why": "기본값이 운영 API"
+        },
+        {
+          "file": "src/api/checkVersion.js",
+          "from": "        reqPlatform: 'WEBOS',\n        ve: '3.3'",
+          "to": "        reqPlatform: 'WEBOS',\n        ve: '99.0' // QA local only",
+          "why": "dev 릴리즈가 낮은 버전에 업데이트를 강제"
+        }
+      ]
+    },
+    "cms": {
+      "label": "CMS",
+      "repo": "rainbow-vue-cms",
+      "kind": "web-admin",
+      "port": 5103,
+      "serve": "npx vite --host 127.0.0.1 --port {port} --strictPort",
+      "note": "VPN 필요. 로그인마다 관리자 휴대폰으로 인증 문자가 발송되므로 세션을 재사용한다."
+    },
+    "crm": {
+      "label": "CRM",
+      "repo": "rainbow-vue-crm",
+      "kind": "web-admin",
+      "port": 5104,
+      "install": "npm ci --no-audit --no-fund --ignore-scripts",
+      "serve": "npx vite --host 127.0.0.1 --port {port} --strictPort",
+      "note": "node-sass 9 가 Node 24 에서 빌드되지 않아 설치 스크립트를 건너뛴다(vite 는 sass 사용). 회원 목록은 검색어가 있어야 조회된다."
+    },
+    "app": {
+      "label": "레모",
+      "repo": "rainbow-flutter-app",
+      "kind": "android-phone",
+      "flavor": "development",
+      "dartDefine": "ENV=development",
+      "package": "com.cmb.rainbowtv",
+      "serial": "emulator-5554",
+      "flutterFrom": ".fvmrc"
+    },
+    "tvapp": {
+      "label": "레TB",
+      "repo": "rainbow-flutter-tvapp",
+      "kind": "android-tv",
+      "flavor": "development",
+      "dartDefine": "ENV=development",
+      "package": "com.cmbkr.rainbowtv.dev",
+      "activity": "com.cmbkr.rainbowtv.MainActivity",
+      "serial": "emulator-5554",
+      "flutterFrom": ".fvmrc"
+    }
+  },
+  "fvmVersions": "~/fvm/versions",
+  "android": {
+    "home": "~/Android/Sdk",
+    "javaHome": "~/.sdkman/candidates/java/17.0.20-tem"
+  }
+}

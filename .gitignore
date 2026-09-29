@@ -1,0 +1,9 @@
+node_modules/
+# 실행 결과·로그인 세션은 저장소 밖(~/qa-runs)에 둔다. 실수로 안에 만든 경우도 막는다
+runs/
+state/
+*.png
+*.webm
+*.mp4
+.env
+*.env

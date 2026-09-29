@@ -1,0 +1,73 @@
+{
+  "base": "develop-sixth",
+  "server": "dev (java-api-dev / devapi)",
+  "note": "경로가 null인 화면은 촬영 시 메뉴 이동으로 찾는다. video=true인 항목만 시나리오 영상을 남긴다.",
+  "items": [
+    {"ticket": "CTVR-16165", "app": "레모(flutter-app)", "kind": "android-phone", "title": "코인몰 명칭을 코인보석함으로 변경", "video": true,
+     "checks": [
+       {"id": "point-tab", "screen": "홈 > 포인트존 탭", "expect": "탭 이름이 '이벤트', '코인보석함'"},
+       {"id": "shopping-tab", "screen": "홈 > 쇼핑 화면", "expect": "탭과 제목이 '코인보석함'"},
+       {"id": "mypage", "screen": "마이페이지", "expect": "메뉴가 '코인보석함 교환 내역'"},
+       {"id": "prize-history", "screen": "마이페이지 > 코인보석함 교환 내역", "expect": "화면 제목이 '코인보석함 교환 내역'"},
+       {"id": "prize-notice", "screen": "경품 상세", "expect": "안내 문구가 '※코인보석함 경품의 교환/환불/취소는…'"}
+     ]},
+    {"ticket": "CTVR-16162", "app": "레모(flutter-app)", "kind": "android-phone", "title": "우리동네 클래스 화면 시청 중인 구역 삭제", "video": true,
+     "checks": [
+       {"id": "class-home", "screen": "홈 > 우리동네 클래스", "expect": "'시청 중인' 구역이 없고, 나머지 구역은 정상 노출"}
+     ]},
+    {"ticket": "CTVR-16166", "app": "레TB(flutter-tvapp)", "kind": "android-tv", "title": "코인몰 화면 노출 명칭을 코인보석함으로 변경", "video": true,
+     "checks": [
+       {"id": "shopping-tab", "screen": "쇼핑 탭", "expect": "탭 이름이 '코인보석함'"},
+       {"id": "point-zone", "screen": "포인트존", "expect": "'코인보석함' 표기"},
+       {"id": "mypage", "screen": "나의 레인보우", "expect": "'코인보석함 경품 교환 내역'"},
+       {"id": "history-empty", "screen": "코인보석함 경품 교환 내역(빈 목록)", "expect": "'조회된 코인보석함 경품 교환 내역이 없습니다.', '코인보석함으로 이동하기'"},
+       {"id": "mall-dialog", "screen": "경품 교환 다이얼로그", "expect": "'※코인보석함 경품의 교환/환불/취소는…'"}
+     ]},
+    {"ticket": "CTVR-16163", "app": "레TB(flutter-tvapp)", "kind": "android-tv", "title": "우리동네 클래스 화면 시청중인 클래스 목록 제거", "video": true,
+     "checks": [
+       {"id": "class-home", "screen": "우리동네 클래스", "expect": "'시청중인 클래스' 목록이 없고, 포커스 이동이 정상"}
+     ]},
+    {"ticket": "CTVR-16167", "app": "레CTV(vue-app)", "kind": "web-tv", "title": "쇼핑 화면 코인몰 명칭을 코인보석함으로 변경", "video": true,
+     "checks": [
+       {"id": "shopping-tab", "screen": "쇼핑 화면", "path": "/main/shopping", "expect": "탭 이름이 '코인보석함'"},
+       {"id": "coin-guide", "screen": "쇼핑 > 코인보석함 탭", "expect": "'코인보석함은 모바일에서 확인해주세요!'"}
+     ]},
+    {"ticket": "CTVR-16164", "app": "레CTV(vue-app)", "kind": "web-tv", "title": "우리동네 클래스 화면 시청중인 클래스 구역 삭제", "video": true,
+     "checks": [
+       {"id": "class-home", "screen": "우리동네 클래스", "path": "/main/class", "expect": "'시청중인 클래스' 구역이 없음"}
+     ]},
+    {"ticket": "CTVR-16168", "app": "웹(vue-web)", "kind": "web", "title": "웹 코인몰 명칭을 코인보석함으로 변경", "video": true,
+     "checks": [
+       {"id": "event-home", "screen": "코인존 > 코인보석함", "path": null, "expect": "페이지 제목과 타이틀이 '코인보석함'"},
+       {"id": "gift-coin", "screen": "선물함 > 코인보석함", "path": "/gift/coin", "expect": "타이틀이 '코인보석함'"},
+       {"id": "trade-modal", "screen": "경품 교환 모달", "expect": "'※코인보석함 경품의 교환/환불/취소는…'"}
+     ]},
+    {"ticket": "CTVR-16169", "app": "모바일웹(vue-webmobile)", "kind": "web-mobile", "title": "모바일 코인몰 명칭을 코인보석함으로 변경", "video": true,
+     "checks": [
+       {"id": "mypage", "screen": "마이페이지", "path": "/mypage", "expect": "버튼이 '코인보석함 교환 내역'"},
+       {"id": "prize-history", "screen": "코인보석함 교환 내역", "path": "/mypage/prize/history", "expect": "제목이 '코인보석함 교환 내역'"},
+       {"id": "prize-filter", "screen": "경품 목록 필터", "path": null, "expect": "타이틀이 '코인보석함'"},
+       {"id": "buy-modal", "screen": "경품 구매 모달", "expect": "'*코인보석함 경품의 교환/환불/취소는…'"}
+     ]},
+    {"ticket": "CTVR-16170", "app": "CMS(vue-cms)", "kind": "web-admin", "title": "CMS 코인몰 명칭을 코인보석함으로 변경", "video": true,
+     "checks": [
+       {"id": "pick-shopping", "screen": "쇼핑/코인보석함 추천관리", "path": "/content/pick/shopping", "expect": "메뉴와 제목이 '쇼핑/코인보석함 추천관리', 구분 값이 '코인보석함상품'"},
+       {"id": "pick-modal", "screen": "추천 등록 모달", "path": "/content/pick/shopping", "expect": "라디오 '코인보석함상품'"},
+       {"id": "prize-choice-modal", "screen": "경품 선택 모달", "path": "/content/pick/shopping", "expect": "모달 제목이 '코인보석함 경품 목록'"},
+       {"id": "prize", "screen": "코인보석함 경품 관리", "path": "/operate/history/prize", "expect": "제목이 '코인보석함 경품 관리'"},
+       {"id": "prize-category", "screen": "코인보석함 카테고리 관리", "path": "/operate/history/prize/category", "expect": "제목이 '코인보석함 카테고리 관리'"},
+       {"id": "trade-history", "screen": "코인보석함 경품 교환 내역", "path": "/operate/history/cmb", "expect": "제목이 '코인보석함 경품 교환 내역'"}
+     ]},
+    {"ticket": "CTVR-16171", "app": "CRM(vue-crm)", "kind": "web-admin", "title": "CRM 코인몰 명칭을 코인보석함으로 변경", "video": true,
+     "checks": [
+       {"id": "member-trade", "screen": "이웃고객 상세 > 코인보석함 경품 교환 내역 탭", "path": "/member/normal/detail/:idx/trade", "expect": "탭 이름이 '코인보석함 경품 교환 내역'"},
+       {"id": "sleep-trade", "screen": "계정 정지 고객 상세 > 코인보석함 경품 교환 내역 탭", "path": "/member/sleep/detail/:idx/prize", "expect": "탭 이름이 '코인보석함 경품 교환 내역'"}
+     ]},
+    {"ticket": "CTVR-16152", "app": "CRM(vue-crm)", "kind": "web-admin", "title": "프로모션·문자캠페인 문자 내용 최대 2,000자 입력 제한", "video": true,
+     "checks": [
+       {"id": "campaign-sms", "screen": "캠페인 자동화 > 문자 등록", "path": null, "expect": "2,001자를 넣으면 2,000자에서 막히고 글자 수 표시가 '2000 / 2000'"},
+       {"id": "promotions-gold", "screen": "프로모션 > 골드 등록 > 문자 내용", "path": null, "expect": "2,000자 초과 시 '문자 내용은 최대 2,000자까지 입력할 수 있습니다.'"},
+       {"id": "promotions-product", "screen": "프로모션 > 상품 등록 > 문자 내용", "path": null, "expect": "2,000자 초과 시 같은 안내 문구"}
+     ]}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "qa-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "여러 앱(웹·모바일웹·TV웹·관리자·안드로이드 폰/TV)을 한 회차로 촬영·판정·보고하는 검수 도구",
+  "type": "commonjs",
+  "scripts": { "qa": "bin/qa" },
+  "dependencies": { "playwright": "^1.63.0" }
+}

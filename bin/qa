@@ -1,0 +1,131 @@
+#!/bin/bash
+# qa-kit 명령. 실행 폴더(QA_RUN) 하나가 검수 회차 하나다.
+#   qa new <project> <round> [제목]    실행 폴더 생성(~/qa-runs/<project>-<round>), checklist 템플릿 복사
+#   qa wt <app...>                    대상 저장소를 기준 브랜치로 분리 워크트리 생성 + 의존성 설치(웹) / 빌드(안드로이드)
+#   qa patch <app> | unpatch <app>    QA 전용 로컬 패치 적용·원복(커밋 안 함)
+#   qa serve <app...> | stop          웹 개발 서버 시작(로그: logs/vite-<app>.log) · 모두 종료
+#   qa run <scenario...>              시나리오 실행(.js 는 node, .sh 는 bash). QA_RUN·QA_KIT·QA_ADB 를 넘긴다
+#   qa note <app> <ticket> <id> <verdict> "<사유>"   사람이 확인한 판정·사유 기록
+#   qa report                         report/index.html 생성
+#   qa status                         워크트리·패치·서버·결과 요약
+#   qa clean                          워크트리 제거(결과는 남김)
+set -euo pipefail
+KIT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+export QA_KIT=$KIT
+
+die() { echo "qa: $*" >&2; exit 1; }
+need_run() { [ -n "${QA_RUN:-}" ] && [ -f "$QA_RUN/run.json" ] || die "QA_RUN 이 없거나 run.json 이 없습니다. qa new 로 만든 폴더를 export QA_RUN=... 하십시오."; }
+# project.json 값 읽기: pj <python 식>  (p = project dict, r = run dict)
+pj() { python3 - "$@" <<'EOF'
+import json, os, sys
+r = json.load(open(os.path.join(os.environ['QA_RUN'], 'run.json')))
+p = json.load(open(os.path.join(os.environ['QA_KIT'], 'projects', r['project'], 'project.json')))
+x = lambda s: os.path.expanduser(s) if isinstance(s, str) else s
+v = eval(sys.argv[1])
+print(v if not isinstance(v, (dict, list)) else json.dumps(v, ensure_ascii=False))
+EOF
+}
+app_field() { pj "p['apps']['$1'].get('$2', '${3:-}')"; }
+wt_of() { echo "$QA_RUN/wt/$(app_field "$1" repo)"; }
+
+cmd=${1:-help}; shift || true
+case $cmd in
+new)
+  [ $# -ge 2 ] || die "usage: qa new <project> <round> [제목]"
+  proj=$1 round=$2 title=${3:-"$round 검수 결과"}
+  [ -f "$KIT/projects/$proj/project.json" ] || die "프로젝트 없음: $proj"
+  dir=${QA_RUNS:-$HOME/qa-runs}/$proj-$round
+  mkdir -p "$dir"/{shots,videos,results,report,logs,state,wt}
+  [ -f "$dir/run.json" ] || python3 - "$KIT" "$proj" "$round" "$title" "$dir" <<'EOF'
+import json, sys, os
+kit, proj, rnd, title, d = sys.argv[1:]
+p = json.load(open(f'{kit}/projects/{proj}/project.json'))
+json.dump({'project': proj, 'round': rnd, 'title': title, 'base': p.get('base'), 'server': p.get('server'),
+           'createdAt': __import__('datetime').datetime.now().isoformat(timespec='seconds')},
+          open(f'{d}/run.json', 'w'), ensure_ascii=False, indent=2)
+EOF
+  src="$KIT/projects/$proj/checklists/$round.json"; [ -f "$src" ] || src="$KIT/templates/checklist.json"
+  [ -f "$dir/checklist.json" ] || cp "$src" "$dir/checklist.json"
+  chmod 700 "$dir/state"
+  echo "실행 폴더: $dir"; echo "export QA_RUN=$dir"
+  ;;
+wt)
+  need_run; root=$(pj "x(p.get('reposRoot','~/projects'))"); base=$(pj "r.get('base') or p['base']")
+  for a in "$@"; do
+    repo=$(app_field "$a" repo); kind=$(app_field "$a" kind); W=$(wt_of "$a")
+    git -C "$root/$repo" fetch -q origin
+    if [ ! -d "$W" ]; then git -C "$root/$repo" worktree add -q --detach "$W" "origin/$base"; fi
+    echo "== $a $(git -C "$W" log --oneline -1)"
+    case $kind in
+      android-*) echo "   안드로이드 빌드: qa build $a" ;;
+      *) inst=$(app_field "$a" install "npm ci --no-audit --no-fund"); [ -d "$W/node_modules" ] || (cd "$W" && eval "$inst" > "$QA_RUN/logs/npm-$a.log" 2>&1) || die "$a 설치 실패: logs/npm-$a.log" ;;
+    esac
+  done
+  ;;
+build)
+  need_run; a=$1; W=$(wt_of "$a")
+  v=$(python3 -c "import json;print(json.load(open('$W/.fvmrc'))['flutter'])")
+  F=$(pj "x(p.get('fvmVersions','~/fvm/versions'))")/$v/bin
+  export ANDROID_HOME=$(pj "x(p['android']['home'])") ANDROID_SDK_ROOT=$(pj "x(p['android']['home'])") JAVA_HOME=$(pj "x(p['android']['javaHome'])")
+  L=$QA_RUN/logs/build-$a.log; P=$W/android/gradle.properties
+  # 메모리 상한(WSL OOM 방지). 워크트리 로컬 변경이며 커밋하지 않는다.
+  sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=768m/' "$P"
+  grep -q '^kotlin.daemon.jvmargs' "$P" || echo 'kotlin.daemon.jvmargs=-Xmx1g' >> "$P"
+  grep -q '^org.gradle.workers.max' "$P" || echo 'org.gradle.workers.max=4' >> "$P"
+  cd "$W"; { date '+%T start flutter '"$v"; "$F/flutter" pub get; } > "$L" 2>&1 || die "pub get 실패: $L"
+  if grep -q build_runner pubspec.yaml; then "$F/dart" run build_runner build --delete-conflicting-outputs >> "$L" 2>&1 || die "codegen 실패: $L"; fi
+  "$F/flutter" build apk --debug --flavor "$(app_field "$a" flavor development)" --dart-define="$(app_field "$a" dartDefine)" >> "$L" 2>&1 && rc=0 || rc=$?
+  (cd android && ./gradlew --stop >/dev/null 2>&1) || true; pkill -f KotlinCompileDaemon 2>/dev/null || true
+  echo "$a build rc=$rc"; ls "$W"/build/app/outputs/flutter-apk/*.apk 2>/dev/null
+  ;;
+patch|unpatch)
+  need_run; a=$1; W=$(wt_of "$a")
+  python3 - "$cmd" "$W" "$(pj "p['apps']['$a'].get('devPatches', [])")" <<'EOF'
+import json, sys, subprocess
+mode, W, patches = sys.argv[1], sys.argv[2], json.loads(sys.argv[3])
+if not patches: print('패치 없음'); sys.exit()
+for pt in patches:
+    f = f"{W}/{pt['file']}"
+    if mode == 'unpatch': subprocess.run(['git', '-C', W, 'checkout', '--', pt['file']], check=True); print('원복', pt['file']); continue
+    s = open(f).read()
+    if pt['to'] in s: print('이미 적용', pt['file']); continue
+    if pt['from'] not in s: sys.exit(f"패치 대상 문구가 없습니다: {pt['file']} — 코드가 바뀌었는지 확인하십시오")
+    open(f, 'w').write(s.replace(pt['from'], pt['to'], 1)); print('적용', pt['file'], '-', pt.get('why', ''))
+EOF
+  ;;
+serve)
+  need_run
+  for a in "$@"; do
+    W=$(wt_of "$a"); port=$(app_field "$a" port); c=$(app_field "$a" serve); c=${c//\{port\}/$port}
+    (cd "$W" && nohup bash -c "$c" > "$QA_RUN/logs/vite-$a.log" 2>&1 &)
+    for i in $(seq 1 30); do curl -s -o /dev/null "http://127.0.0.1:$port/" && break; sleep 2; done
+    curl -s -o /dev/null "http://127.0.0.1:$port/" && echo "$a http://127.0.0.1:$port" || die "$a 서버 기동 실패: logs/vite-$a.log"
+  done
+  ;;
+stop)
+  need_run; pkill -f "vite --host 127.0.0.1 --port" || true; echo "개발 서버 종료"
+  ;;
+run)
+  need_run; export QA_ADB=${QA_ADB:-$(pj "x(p.get('adb',''))")}
+  for s in "$@"; do
+    s=$(realpath "$s"); case $s in *.js) node "$s" ;; *.sh) bash "$s" ;; *) die "지원하지 않는 시나리오: $s" ;; esac
+  done
+  ;;
+note) need_run; python3 "$KIT/lib/note.py" "$@" ;;
+report) need_run; (cd "$KIT" && node lib/report.js) ;;
+status)
+  need_run; echo "run: $QA_RUN ($(pj "r['title']"))"
+  for W in "$QA_RUN"/wt/*/; do [ -d "$W/.git" ] || [ -f "$W/.git" ] || continue; echo "  wt $(basename "$W") $(git -C "$W" log --oneline -1 | cut -c1-60) · 변경 $(git -C "$W" status -s | wc -l)"; done
+  ss -ltn 2>/dev/null | grep -oE '127.0.0.1:51[0-9]{2}' | sed 's/^/  서버 /' || true
+  echo "  결과 $(ls "$QA_RUN"/results/*.json 2>/dev/null | wc -l)건"
+  ;;
+clean)
+  need_run
+  for W in "$QA_RUN"/wt/*/; do
+    [ -e "$W/.git" ] || continue
+    [ -z "$(git -C "$W" status -s --untracked-files=no)" ] || { echo "변경이 남은 워크트리는 건너뜀: $W"; continue; }
+    git -C "$W" worktree remove --force "$W" && echo "제거 $W"
+  done
+  ;;
+*) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

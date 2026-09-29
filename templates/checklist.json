@@ -1,0 +1,15 @@
+{
+  "note": "path 가 null 인 화면은 메뉴 이동으로 찾는다. video=true 인 항목만 시나리오 영상을 남긴다.",
+  "items": [
+    {
+      "ticket": "PROJ-0000",
+      "app": "앱 표시명(앱키)",
+      "kind": "web | web-mobile | web-tv | web-admin | android-phone | android-tv",
+      "title": "티켓 제목",
+      "video": true,
+      "checks": [
+        { "id": "screen-id", "screen": "화면 이름", "path": "/경로 또는 null", "expect": "확인할 결과" }
+      ]
+    }
+  ]
+}
