@@ -33,3 +33,10 @@ async function ctvLogin(base, storage) {
 }
 module.exports.ctvLogin = ctvLogin;
 module.exports.webosStub = webosStub;
+
+// 레CTV 삼성(Tizen) 실행 흉내. checkVersion.js 의 deviceType 을 'tizen' 으로 로컬 변경한 빌드와 함께 쓴다.
+const tizenStub = () => {
+  window.tizen = window.tizen || { systeminfo: { getPropertyValue: (n, ok) => ok({ model: 'QA' }) }, application: { getCurrentApplication: () => ({ exit() {}, hide() {} }) }, tvinputdevice: { registerKey() {}, registerKeyBatch() {}, getSupportedKeys: () => [] } };
+  window.webapis = window.webapis || { productinfo: { getModel: () => 'QA', getFirmware: () => 'QA' } };
+};
+module.exports.tizenStub = tizenStub;

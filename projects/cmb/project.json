@@ -9,7 +9,8 @@
     "CMB_DEV_USER_PW",
     "CMB_DEV_ADMIN_ID",
     "CMB_DEV_ADMIN_PW",
-    "CMB_DEV_ADMIN_OTP"
+    "CMB_DEV_ADMIN_OTP",
+    "CMB_DEV_MEMBER_KEYWORD"
   ],
   "blockHosts": "https://(java-api|api|apiv2|stats|wapi|alarm|alarmv2)\\.cmbrainbowtv\\.co\\.kr/",
   "watchHostSuffix": "cmbrainbowtv.co.kr",
@@ -29,7 +30,15 @@
       "kind": "web-mobile",
       "port": 5101,
       "serve": "npx vite --host 127.0.0.1 --port {port} --strictPort",
-      "note": "데스크톱 UA로 열면 웹 도메인으로 넘어가므로 모바일 기기(devices['iPhone 13'])로 연다."
+      "note": "데스크톱 UA로 열면 웹 도메인으로 넘어가므로 모바일 기기(devices['iPhone 13'])로 연다.",
+      "devPatches": [
+        {
+          "file": "src/router/routes.js",
+          "from": "    // {\n    //     path: \"/shopping/:idx/purchase\",\n    //     component: () => import('../views/shopping/ShoppingPurchase.vue'),\n    //     name: \"ShoppingPurchase\",\n    //     beforeEnter: storeSet,\n    //     meta: {\n    //         name: \"ShoppingPurchase\", title: \"쇼핑 상품 구매\",\n    //         authRequired: true,\n    //         storeRequired: true,\n    //         storeConfig: {userInfo: true},\n    //     }\n    // },\n    // {\n    //     path: \"/shopping/:idx/purchase/detail\",\n    //     component: () => import('../views/shopping/ShoppingPurchaseDetail.vue'),\n    //     name: \"ShoppingPurchaseDetail\",\n    //     beforeEnter: storeSet,\n    //     meta: {\n    //         name: \"ShoppingPurchaseDetail\", title: \"레인보우 쇼핑 구매\",\n    //         authRequired: true,\n    //         storeRequired: true,\n    //         storeConfig: {userInfo: true},\n    //     }\n    // },",
+          "to": "    { // QA local only\n        path: \"/shopping/:idx/purchase\",\n        component: () => import('../views/shopping/ShoppingPurchase.vue'),\n        name: \"ShoppingPurchase\",\n        beforeEnter: storeSet,\n        meta: {\n            name: \"ShoppingPurchase\", title: \"쇼핑 상품 구매\",\n            authRequired: true,\n            storeRequired: true,\n            storeConfig: {userInfo: true},\n        }\n    },\n    {\n        path: \"/shopping/:idx/purchase/detail\",\n        component: () => import('../views/shopping/ShoppingPurchaseDetail.vue'),\n        name: \"ShoppingPurchaseDetail\",\n        beforeEnter: storeSet,\n        meta: {\n            name: \"ShoppingPurchaseDetail\", title: \"레인보우 쇼핑 구매\",\n            authRequired: true,\n            storeRequired: true,\n            storeConfig: {userInfo: true},\n        }\n    },",
+          "why": "쇼핑 구매 라우트가 주석 처리되어 있음(2026-04-07). CTVR-16348 검수에만 필요"
+        }
+      ]
     },
     "ctv": {
       "label": "레CTV",

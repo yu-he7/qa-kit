@@ -68,6 +68,39 @@
        {"id": "campaign-sms", "screen": "캠페인 자동화 > 문자 등록", "path": null, "expect": "2,001자를 넣으면 2,000자에서 막히고 글자 수 표시가 '2000 / 2000'"},
        {"id": "promotions-gold", "screen": "프로모션 > 골드 등록 > 문자 내용", "path": null, "expect": "2,000자 초과 시 '문자 내용은 최대 2,000자까지 입력할 수 있습니다.'"},
        {"id": "promotions-product", "screen": "프로모션 > 상품 등록 > 문자 내용", "path": null, "expect": "2,000자 초과 시 같은 안내 문구"}
+     ]},
+    {"ticket": "CTVR-16345", "app": "레모(flutter-app)", "kind": "android-phone", "title": "쇼핑 구매 링크에 platform=APP 추가", "video": true,
+     "checks": [
+       {"id": "direct", "screen": "직접판매 상품 > 스토어 구매하기 > 바로이동", "path": null, "expect": "열린 주소가 /shopping/<상품>/purchase?platform=APP"},
+       {"id": "relay", "screen": "중계판매 상품 > 외부 구매", "path": null, "expect": "외부 링크 그대로, platform 값 없음"}
+     ]},
+    {"ticket": "CTVR-16346", "app": "레TB(flutter-tvapp)", "kind": "android-tv", "title": "쇼핑 구매 링크에 platform=SETTOP 추가", "video": true,
+     "checks": [
+       {"id": "dialog", "screen": "직접판매 상품 상세 > 구매하기", "path": null, "expect": "구매 링크 전달 창이 열림(문자 전송 단계는 단위 테스트로 확인)"}
+     ]},
+    {"ticket": "CTVR-16347", "app": "레CTV(vue-app)", "kind": "web-tv", "title": "쇼핑 구매 링크에 플랫폼 값 추가(webOS·Tizen)", "video": true,
+     "checks": [
+       {"id": "direct-sent", "screen": "직접판매 상품 구매 링크 문자 전송 요청", "path": null, "expect": "shopLink 에 ?platform=WEBOS(또는 TIZEN)"},
+       {"id": "relay-sent", "screen": "중계판매 상품 구매 링크 문자 전송 요청", "path": null, "expect": "외부 링크 그대로, platform 없음"}
+     ]},
+    {"ticket": "CTVR-16348", "app": "모바일웹(vue-webmobile)", "kind": "web-mobile", "title": "쇼핑 구매 링크의 platform 값을 주문 생성 요청에 전달", "video": true,
+     "checks": [
+       {"id": "order", "screen": "쇼핑 구매 > 결제 > 주문 생성 요청", "path": "/shopping/<상품>/purchase?platform=APP", "expect": "주문 요청 platform=APP·SETTOP 전달, 없음·허용 외 값은 보내지 않음, 결제 후 보관값 삭제"}
+     ]},
+    {"ticket": "CTVR-16281", "app": "CMS(vue-cms)", "kind": "web-admin", "title": "BF데이터 관리 > 분석 BF데이터 > 콘텐츠 분석 BF데이터", "video": true,
+     "checks": [
+       {"id": "search", "screen": "콘텐츠 분석 BF데이터 조회·페이지·기간 검증", "path": "/statistics/analysis/contents", "expect": "기본 30일 조회, 기간 역전 안내, 적재일 뒤 날짜 비활성"},
+       {"id": "download", "screen": "엑셀·RAW 다운로드", "path": null, "expect": "사유 입력 후 파일명 규칙대로 다운로드, 로그·다운로드 이력 저장"},
+       {"id": "authority", "screen": "권한 포멧 등록·로그 관리", "path": "/member/admin/adminAuth/create", "expect": "BF데이터 관리 아래 분석 BF데이터 권한, 로그 접근 항목 필터"}
+     ]},
+    {"ticket": "CTVR-16282", "app": "CMS(vue-cms)", "kind": "web-admin", "title": "BF데이터 관리 > 분석 BF데이터 > 채널메뉴 분석 BF데이터", "video": true,
+     "checks": [
+       {"id": "search", "screen": "채널메뉴 분석 BF데이터 조회·다운로드", "path": "/statistics/analysis/channel-menus", "expect": "16281 과 같은 기준"}
+     ]},
+    {"ticket": "CTVR-16428", "app": "CRM(vue-crm)", "kind": "web-admin", "title": "정지/휴면 상세 엑셀 설정·Raw Data AD(광고)결합 탭 제거", "video": true,
+     "checks": [
+       {"id": "raw", "screen": "정산관리 > Raw Data·월 취합", "path": "/purchase/calculate/raw", "expect": "AD(광고)결합 탭 없음, 제거한 주소 직접 입력 시 화면 없음"},
+       {"id": "sleep-detail", "screen": "계정 정지/휴면 고객 상세", "path": null, "expect": "엑셀 버튼 없음"}
      ]}
   ]
 }

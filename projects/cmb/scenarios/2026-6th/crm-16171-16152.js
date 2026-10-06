@@ -1,5 +1,6 @@
 // CRM CTVR-16171 코인몰 → 코인보석함 · CTVR-16152 문자 내용 최대 2,000자. 조회·입력만 하고 저장하지 않는다(정지/해제 버튼은 누르지 않음).
-const { session, statePath } = require('../../../../lib/web');
+// 회원 검색어는 계정 파일의 CMB_DEV_MEMBER_KEYWORD(dev 테스트 회원 이름)를 쓴다.
+const { session, statePath, env } = require('../../../../lib/web');
 const { adminLogin } = require('../../lib/login');
 const base = process.env.BASE || 'http://127.0.0.1:5104';
 const storage = statePath('crm');
@@ -13,7 +14,7 @@ const S2001 = ('가나다라마바사아자차'.repeat(201)).slice(0, 2001);
   let { page, check, result } = s;
   const go = async u => { await page.goto(base + u, { waitUntil: 'load', timeout: 90000 }); await page.waitForTimeout(4000); };
   await go('/member/normal');
-  await page.locator("input[placeholder='검색어를 입력해주세요.']").first().fill('유희재');
+  await page.locator("input[placeholder='검색어를 입력해주세요.']").first().fill(env.CMB_DEV_MEMBER_KEYWORD || '');
   await page.getByRole('button', { name: '검색', exact: true }).first().click(); await page.waitForTimeout(5000);
   await page.getByRole('button', { name: '상세', exact: true }).first().click(); await page.waitForTimeout(4000);
   const mbNo = (page.url().match(/detail\/(\d+)/) || [])[1];
