@@ -18,7 +18,39 @@ qa-kit을 처음 쓰는 사람이 자기 PC에서 검수 회차를 돌릴 수 �
 | C. 안드로이드 | fvm + 각 앱의 `.fvmrc` Flutter 버전 | — | 저장소별 Flutter 버전 고정 |
 | C. 안드로이드 | Android 에뮬레이터 또는 실기기 + adb | — | 앱 실행·녹화·UI 덤프 |
 
-운영체제는 Linux 또는 WSL2(Ubuntu)를 기준으로 한다. macOS도 bash·python3가 있으면 동작하지만, 경로 설정을 바꿔야 한다.
+### 운영체제
+
+| 환경 | 가능 여부 | 비고 |
+|---|---|---|
+| Windows + WSL2(Ubuntu) | 가능(작성자 환경) | qa-kit·Node·Playwright는 WSL 안에 설치한다. 에뮬레이터는 Windows 쪽을 쓴다 |
+| Linux | 가능 | 경로 설정만 맞춘다 |
+| macOS | 대부분 가능 | `ss`·`sed -i` 등 일부 명령이 달라 `qa status`·`qa build`가 실패할 수 있다 |
+| Windows 단독(PowerShell·cmd·Git Bash) | 불가 | `bin/qa`와 안드로이드 엔진이 bash·python3·`pkill`·`ss`·`nohup`을 쓴다 |
+
+Windows에서는 [WSL2로 준비하기](#windows-wsl2로-준비하기)를 먼저 따른다.
+
+### Windows: WSL2로 준비하기
+
+1. PowerShell(관리자)에서 WSL2와 Ubuntu를 설치하고 재부팅한다.
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+2. Ubuntu 터미널을 열어 기본 도구와 Node를 설치한다. Node는 nvm 등으로 24 버전을 맞춘다.
+   ```bash
+   sudo apt update && sudo apt install -y git curl python3 unzip
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+   source ~/.bashrc && nvm install 24
+   ```
+3. 저장소는 WSL 파일 시스템(`~/projects`) 아래에 클론한다. `/mnt/c/...`(Windows 드라이브)에 두면 `npm ci`와 개발 서버가 매우 느리다.
+4. 이후 [2. 저장소와 검수 대상 준비](#2-저장소와-검수-대상-준비)부터 그대로 진행한다. 브라우저 라이브러리 설치(`npx playwright install-deps chromium`)가 필요하다.
+
+WSL에서 쓸 때 알아 둘 것:
+
+- **보고서 열기**: `explorer.exe "$(wslpath -w "$QA_RUN/report/index.html")"`로 Windows 브라우저에서 연다. 탐색기 주소창에 `\\wsl$\Ubuntu\home\<사용자>\qa-runs`를 넣어도 된다.
+- **개발 서버**: WSL에서 띄운 `127.0.0.1:5100~5104`는 Windows 브라우저에서도 열린다.
+- **VPN**: Windows에서 켠 회사 VPN을 WSL도 함께 쓴다. CMS·CRM이 안 열리면 VPN을 켠 뒤 `wsl --shutdown`으로 WSL을 다시 시작한다.
+- **안드로이드**: 에뮬레이터는 Windows Android Studio에서 띄우고 Windows의 `adb.exe`로 다룬다([5. 안드로이드 준비](#5-안드로이드-준비폰tv-앱을-검수할-때만)). APK 빌드만 WSL 안의 SDK·JDK로 한다.
+- **메모리**: APK 빌드는 메모리를 많이 쓴다. WSL이 죽으면 Windows 사용자 폴더의 `.wslconfig`에 `[wsl2]` `memory=8GB` 이상을 주고 `wsl --shutdown` 후 다시 연다.
 
 ## 2. 저장소와 검수 대상 준비
 
@@ -136,7 +168,27 @@ bin/qa wt app && bin/qa build app        # logs/build-app.log, APK 경로 출력
 bin/qa run projects/cmb/scenarios/2026-6th/app-16162.sh
 ```
 
-## 8. 자주 막히는 곳
+## 8. 6차 시나리오 준비 사항
+
+`projects/cmb/scenarios/2026-6th/`의 시나리오별로 먼저 해 둘 일이다. 각 파일 머리 주석에도 같은 내용이 있다.
+환경 변수는 앞에 붙여 넘긴다(예: `CASE=none bin/qa run .../webmobile-16348.js`).
+
+| 시나리오 | 앱 | 준비 | 비고 |
+|---|---|---|---|
+| `web-16168.js` | web | `qa serve web` | |
+| `webmobile-16169.js` | webmobile | `qa serve webmobile` | 설치 확인용으로 쓰기 좋다 |
+| `webmobile-16348.js` | webmobile | `qa patch webmobile`, `qa serve webmobile`, 처음이면 `LOGIN=1` | `CASE=app-popup·settop-safari·none·invalid`. 장바구니·결제·주문 요청은 가짜 응답으로 가로챈다 |
+| `ctv-16164-16167.js` | ctv | `qa patch ctv`, `qa serve ctv` | |
+| `ctv-16347.js` | ctv | `qa patch ctv`, `qa serve ctv` | `DEVICE=tizen`이면 워크트리의 `src/api/checkVersion.js` deviceType을 `'tizen'`으로 직접 바꾼다. 문자 전송 요청은 가로챈다 |
+| `ctv-bf-events.js` | ctv | `qa patch ctv`, `qa serve ctv` | 찜·댓글·리뷰를 dev에 실제로 남긴다. 끝나면 정리한다 |
+| `cms-16170.js` | cms | VPN, `qa serve cms` | |
+| `cms-16281-16282.js` | cms·crm | VPN, `qa serve cms crm` | 일부만 돌리려면 `node <파일> content`(또는 `menu`·`auth`·`crm`)로 직접 실행한다(`qa run`은 인자를 넘기지 않는다). 다운로드 이력·로그가 dev에 쌓인다 |
+| `cms-16281-perf*.js` | cms | VPN, `qa serve cms`, dev에 2026-08 합성 데이터 적재 | 성능 측정 전용 |
+| `crm-16171-16152.js`, `crm-16428.js` | crm | VPN, `qa serve crm`, 계정 파일 `CMB_DEV_MEMBER_KEYWORD` | |
+| `app-16162.sh`, `app-16165.sh`, `app-16345.sh` | app | 폰 에뮬레이터, APK 설치 | 16345는 에뮬레이터 Chrome 원격 디버깅으로 열린 주소를 읽는다 |
+| `tvapp-16163.sh`, `tvapp-16166.sh`, `tvapp-16346.sh` | tvapp | TV 에뮬레이터, APK 설치 | |
+
+## 9. 자주 막히는 곳
 
 | 증상 | 원인·조치 |
 |---|---|
@@ -148,7 +200,7 @@ bin/qa run projects/cmb/scenarios/2026-6th/app-16162.sh
 | 안드로이드 `앱(...) 화면이 아님` | 앱이 안 떴거나 팝업에 가렸다. `a_texts`로 현재 화면 문구를 보고 시나리오를 고친다 |
 | 관리자 로그인 반복 시 인증 문자가 계속 옴 | 세션 재사용 시간(`maxAgeMin`) 안에 다시 돌린다. `state/`를 지우지 않는다 |
 
-## 9. 지켜야 할 것
+## 10. 지켜야 할 것
 
 - 시나리오 머리 주석의 `준비:`·`주의:`를 먼저 읽는다. `ctv-bf-events.js`는 BF 사건 확인용으로 찜·댓글·리뷰를 dev에 실제로 남기고, `cms-16281-perf*.js`는 합성 데이터를 적재한 상태에서만 의미가 있다.
 - 저장·삭제·정지처럼 데이터를 바꾸는 버튼은 누르지 않는다. 조회·입력·모달 열기까지만 한다.
