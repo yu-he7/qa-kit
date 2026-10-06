@@ -19,6 +19,7 @@ lib/note.py            사람이 확인한 판정·사유 기록
 templates/checklist.json
 projects/<name>/
   project.json         저장소·앱 종류·포트·설치 명령·QA 전용 로컬 패치·차단 서버·기기 패키지
+  project.local.json   개인 환경 값(adb·SDK 경로·기기 이름 등)만 덮어쓴다. 커밋하지 않는다
   lib/                 프로젝트별 로그인 등
   checklists/<회차>.json
   scenarios/<회차>/    티켓별 시나리오(.js 웹, .sh 안드로이드)
@@ -45,6 +46,7 @@ bin/qa patch ctv                                     # project.json 의 devPatch
 bin/qa serve web webmobile ctv cms crm               # 개발 서버(project.json 의 port)
 bin/qa build app && bin/qa build tvapp               # 안드로이드 APK(.fvmrc 의 Flutter 버전 사용)
 bin/qa run projects/cmb/scenarios/2026-7th/*.js projects/cmb/scenarios/2026-7th/*.sh
+bin/qa run projects/cmb/scenarios/2026-6th/cms-16281-16282.js -- content   # -- 뒤는 시나리오 인자
 bin/qa note webmobile CTVR-1 03-modal info "진입 경로 없음 — 코드로 확인"   # 필요한 경우
 bin/qa report                                        # $QA_RUN/report/index.html
 bin/qa stop; bin/qa unpatch ctv; bin/qa clean
@@ -67,7 +69,7 @@ await s.close();
 - 로그인은 `saveLogin`으로 한 번 만들고 `storage`로 재사용한다. 인증 문자처럼 부작용이 있는 로그인은 `maxAgeMin`으로 재사용 기간을 둔다.
 - 대조군(바뀌지 않아야 하는 화면)을 함께 찍는다. "없음" 판정이 우연히 비어 있어서가 아님을 보여 준다.
 
-안드로이드(`.sh`): `source "$QA_KIT/lib/android.sh"`, `A_SERIAL/A_PKG/A_APP/A_TICKET`을 정한 뒤 `a_launch → a_rec_start → a_check … → a_rec_stop`.
+안드로이드(`.sh`): `source "$QA_KIT/lib/android.sh"`, `A_SERIAL=$(a_serial <앱키>)`와 `A_PKG/A_APP/A_TICKET`을 정한 뒤 `a_launch → a_rec_start → a_check … → a_rec_stop`.
 
 ## 지켜야 할 것
 
@@ -80,4 +82,5 @@ await s.close();
 ## 새 프로젝트 추가
 
 `projects/<name>/project.json`을 만든다(`projects/cmb/project.json` 참고). 필수 항목은 `accountsEnv`·`blockHosts`·`reposRoot`·`apps`다.
+PC마다 다른 값은 `project.local.json`에 둔다([설치 가이드](docs/SETUP.md#4-내-pc에-맞게-고칠-설정)).
 각 앱에는 `repo`·`kind`와, 웹이면 `port`·`serve`(필요하면 `install`·`devPatches`), 안드로이드면 `package`·`serial`·`flavor`·`dartDefine`을 둔다.

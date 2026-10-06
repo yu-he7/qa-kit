@@ -7,3 +7,5 @@ state/
 *.mp4
 .env
 *.env
+projects/*/project.local.json
+__pycache__/

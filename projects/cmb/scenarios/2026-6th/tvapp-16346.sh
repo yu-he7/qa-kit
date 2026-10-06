@@ -1,7 +1,7 @@
 #!/bin/bash
 # CTVR-16346 레TB: 직접판매 상품 상세 → 구매하기 → 구매 링크 전달 창까지 촬영.
 # TV 에뮬레이터에서 번호 입력이 입력칸에 들어가지 않아 전송 단계는 촬영하지 못함. 링크 값은 임시 단위 테스트로 따로 확인했다.
-source "$QA_KIT/lib/android.sh"; A_SERIAL=emulator-5554; A_PKG=com.cmbkr.rainbowtv.dev; A_ACT=com.cmbkr.rainbowtv.MainActivity; A_APP=flutter-tvapp; A_TICKET=CTVR-16346
+source "$QA_KIT/lib/android.sh"; A_SERIAL=$(a_serial tvapp); A_PKG=com.cmbkr.rainbowtv.dev; A_ACT=com.cmbkr.rainbowtv.MainActivity; A_APP=flutter-tvapp; A_TICKET=CTVR-16346
 rm -f $Q/results/$A_APP-$A_TICKET.json
 a_launch 20
 a_rec_start

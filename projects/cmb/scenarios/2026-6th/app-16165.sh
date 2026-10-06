@@ -1,6 +1,6 @@
 #!/bin/bash
 # CTVR-16165 레모: 코인몰 → 코인보석함 명칭 변경 (쇼핑 탭 → 경품 교환 → 마이 → 교환 내역)
-source "$QA_KIT/lib/android.sh"; A_SERIAL=emulator-5554; A_PKG=com.cmb.rainbowtv; A_APP=flutter-app; A_TICKET=CTVR-16165
+source "$QA_KIT/lib/android.sh"; A_SERIAL=$(a_serial app); A_PKG=com.cmb.rainbowtv; A_APP=flutter-app; A_TICKET=CTVR-16165
 rm -f $Q/results/$A_APP-$A_TICKET.json
 a_launch
 a_rec_start

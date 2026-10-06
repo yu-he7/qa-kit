@@ -1,7 +1,7 @@
 #!/bin/bash
 # CTVR-16163 레TB: 우리동네클래스 탭에서 '○○ 님이 시청중인 클래스' 목록 제거
 # 이전 코드는 시청 이력이 비면 목록을 숨겼으므로, 먼저 클래스 영상을 재생해 이력을 만든 뒤 확인한다. 대조군: VOD 탭.
-source "$QA_KIT/lib/android.sh"; A_SERIAL=emulator-5554; A_PKG=com.cmbkr.rainbowtv.dev; A_ACT=com.cmbkr.rainbowtv.MainActivity; A_APP=flutter-tvapp; A_TICKET=CTVR-16163
+source "$QA_KIT/lib/android.sh"; A_SERIAL=$(a_serial tvapp); A_PKG=com.cmbkr.rainbowtv.dev; A_ACT=com.cmbkr.rainbowtv.MainActivity; A_APP=flutter-tvapp; A_TICKET=CTVR-16163
 rm -f $Q/results/$A_APP-$A_TICKET.json
 a_launch 15
 a_rec_start

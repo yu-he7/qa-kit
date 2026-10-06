@@ -1,7 +1,7 @@
 #!/bin/bash
 # CTVR-16345 레모: 쇼핑 구매 링크에 platform=APP 추가 (직접판매: 안내 창 주소·바로이동 주소 / 중계판매: 외부 링크 그대로)
 # 브라우저에 열린 실제 주소는 Chrome 원격 디버깅(/json)으로 읽어 결과에 남긴다.
-source "$QA_KIT/lib/android.sh"; A_SERIAL=emulator-5554; A_PKG=com.cmb.rainbowtv; A_APP=flutter-app
+source "$QA_KIT/lib/android.sh"; A_SERIAL=$(a_serial app); A_PKG=com.cmb.rainbowtv; A_APP=flutter-app
 # adb forward 는 adb 서버가 도는 쪽에 포트를 연다. Windows adb.exe 를 쓰면 Windows curl 로 읽는다
 case "$QA_ADB" in *.exe) CURL=/mnt/c/Windows/System32/curl.exe ;; *) CURL=curl ;; esac
 bounds_of() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb exec-out cat /sdcard/ui.xml | python3 -c "

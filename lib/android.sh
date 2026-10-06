@@ -1,11 +1,21 @@
 #!/bin/bash
-# 안드로이드(폰·TV) 촬영 엔진. usage: source lib/android.sh; A_SERIAL=emulator-5554 A_PKG=<패키지> A_APP=<앱키> A_TICKET=<티켓>
-# QA_RUN: 실행 폴더(필수). QA_ADB: adb 실행 파일(없으면 PATH 의 adb). WSL 에서 Windows 에뮬레이터를 쓰면 adb.exe 경로를 준다.
+# 안드로이드(폰·TV) 촬영 엔진. usage: source lib/android.sh; A_SERIAL=$(a_serial <앱키>) A_PKG=<패키지> A_APP=<결과 폴더 이름> A_TICKET=<티켓>
+# QA_RUN·QA_KIT: 실행 폴더·도구 폴더(qa run 이 넘긴다). QA_ADB: adb 실행 파일(없으면 PATH 의 adb). WSL 에서 Windows 에뮬레이터를 쓰면 adb.exe 경로를 준다.
 [ -n "$QA_RUN" ] || { echo "QA_RUN 이 없습니다" >&2; return 1 2>/dev/null || exit 1; }
 Q=$QA_RUN
 QA_ADB=${QA_ADB:-$(command -v adb)}
 adb() { "$QA_ADB" ${A_SERIAL:+-s $A_SERIAL} "$@"; }
 A_TMP=$Q/.tmp; mkdir -p "$A_TMP"
+
+# 기기 이름: QA_SERIAL 환경 변수 > project(.local).json 의 apps.<앱키>.serial
+a_serial() {
+  [ -n "${QA_SERIAL:-}" ] && { echo "$QA_SERIAL"; return; }
+  python3 -c "
+import json, os, sys
+sys.path.insert(0, os.path.join(os.environ['QA_KIT'], 'lib')); from project import load
+r = json.load(open(os.path.join(os.environ['QA_RUN'], 'run.json')))
+print(load(os.environ['QA_KIT'], r['project'])['apps'][sys.argv[1]].get('serial', ''))" "$1"
+}
 
 a_dirs() { mkdir -p "$Q/shots/$A_APP" "$Q/videos/$A_APP" "$Q/results"; }
 

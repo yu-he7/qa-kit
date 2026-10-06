@@ -4,7 +4,8 @@
 #   qa wt <app...>                    대상 저장소를 기준 브랜치로 분리 워크트리 생성 + 의존성 설치(웹) / 빌드(안드로이드)
 #   qa patch <app> | unpatch <app>    QA 전용 로컬 패치 적용·원복(커밋 안 함)
 #   qa serve <app...> | stop          웹 개발 서버 시작(로그: logs/vite-<app>.log) · 모두 종료
-#   qa run <scenario...>              시나리오 실행(.js 는 node, .sh 는 bash). QA_RUN·QA_KIT·QA_ADB 를 넘긴다
+#   qa build <app>                    안드로이드 APK 빌드(.fvmrc 의 Flutter 버전)
+#   qa run <scenario...> [-- 인자...]  시나리오 실행(.js 는 node, .sh 는 bash). QA_RUN·QA_KIT·QA_ADB 와 -- 뒤 인자를 넘긴다
 #   qa note <app> <ticket> <id> <verdict> "<사유>"   사람이 확인한 판정·사유 기록
 #   qa report                         report/index.html 생성
 #   qa status                         워크트리·패치·서버·결과 요약
@@ -15,11 +16,12 @@ export QA_KIT=$KIT
 
 die() { echo "qa: $*" >&2; exit 1; }
 need_run() { [ -n "${QA_RUN:-}" ] && [ -f "$QA_RUN/run.json" ] || die "QA_RUN 이 없거나 run.json 이 없습니다. qa new 로 만든 폴더를 export QA_RUN=... 하십시오."; }
-# project.json 값 읽기: pj <python 식>  (p = project dict, r = run dict)
+# project.json(+개인 설정 project.local.json) 값 읽기: pj <python 식>  (p = project dict, r = run dict)
 pj() { python3 - "$@" <<'EOF'
 import json, os, sys
+sys.path.insert(0, os.path.join(os.environ['QA_KIT'], 'lib')); from project import load
 r = json.load(open(os.path.join(os.environ['QA_RUN'], 'run.json')))
-p = json.load(open(os.path.join(os.environ['QA_KIT'], 'projects', r['project'], 'project.json')))
+p = load(os.environ['QA_KIT'], r['project'])
 x = lambda s: os.path.expanduser(s) if isinstance(s, str) else s
 v = eval(sys.argv[1])
 print(v if not isinstance(v, (dict, list)) else json.dumps(v, ensure_ascii=False))
@@ -39,7 +41,8 @@ new)
   [ -f "$dir/run.json" ] || python3 - "$KIT" "$proj" "$round" "$title" "$dir" <<'EOF'
 import json, sys, os
 kit, proj, rnd, title, d = sys.argv[1:]
-p = json.load(open(f'{kit}/projects/{proj}/project.json'))
+sys.path.insert(0, f'{kit}/lib'); from project import load
+p = load(kit, proj)
 json.dump({'project': proj, 'round': rnd, 'title': title, 'base': p.get('base'), 'server': p.get('server'),
            'createdAt': __import__('datetime').datetime.now().isoformat(timespec='seconds')},
           open(f'{d}/run.json', 'w'), ensure_ascii=False, indent=2)
@@ -107,8 +110,9 @@ stop)
   ;;
 run)
   need_run; export QA_ADB=${QA_ADB:-$(pj "x(p.get('adb',''))")}
-  for s in "$@"; do
-    s=$(realpath "$s"); case $s in *.js) node "$s" ;; *.sh) bash "$s" ;; *) die "지원하지 않는 시나리오: $s" ;; esac
+  files=(); while [ $# -gt 0 ] && [ "$1" != "--" ]; do files+=("$1"); shift; done; [ $# -gt 0 ] && shift
+  for s in "${files[@]}"; do
+    s=$(realpath "$s"); case $s in *.js) node "$s" "$@" ;; *.sh) bash "$s" "$@" ;; *) die "지원하지 않는 시나리오: $s" ;; esac
   done
   ;;
 note) need_run; python3 "$KIT/lib/note.py" "$@" ;;
@@ -127,5 +131,5 @@ clean)
     git -C "$W" worktree remove --force "$W" && echo "제거 $W"
   done
   ;;
-*) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
+*) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

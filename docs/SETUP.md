@@ -105,19 +105,32 @@ CMB_DEV_MEMBER_KEYWORD=   # CRM 회원 검색 시나리오에서 찾을 dev 테�
 
 ## 4. 내 PC에 맞게 고칠 설정
 
-`projects/cmb/project.json`에는 작성자 PC 경로가 들어 있다. 자기 환경에 맞게 고친다.
-이 수정은 개인 환경 값이므로 커밋하지 않는다.
+`projects/cmb/project.json`에는 작성자 PC 경로가 기본값으로 들어 있다. `project.json`은 고치지 않고,
+같은 폴더에 **`project.local.json`** 을 만들어 자기 환경과 다른 값만 적는다. 이 파일은 `.gitignore` 대상이라 커밋되지 않는다.
 
-| 항목 | 현재 값 | 바꿀 내용 |
+```json
+{
+  "adb": "/mnt/c/Users/<사용자>/AppData/Local/Android/Sdk/platform-tools/adb.exe",
+  "android": { "javaHome": "~/.sdkman/candidates/java/17.0.20-tem" },
+  "apps": { "tvapp": { "serial": "emulator-5556" } }
+}
+```
+
+- 객체는 키 단위로 합친다. 위 예시에서 `apps.tvapp`은 `serial`만 바뀌고 `repo`·`package` 등은 그대로 쓴다.
+- 문자열·숫자·배열은 통째로 바꾼다(`devPatches`·`accountKeys`를 적으면 기본값을 대신한다).
+- `qa` 명령, 웹 시나리오, 안드로이드 시나리오가 모두 같은 규칙으로 읽는다.
+
+| 항목 | 기본값 | 바꿀 내용 |
 |---|---|---|
 | `reposRoot` | `~/projects` | 검수 대상 저장소를 클론한 폴더 |
 | `adb` | Windows SDK의 `adb.exe` 경로 | 자기 adb 경로. Linux 네이티브 에뮬레이터면 `adb` 또는 빈 값 |
 | `android.home` | `~/Android/Sdk` | WSL/Linux 쪽 Android SDK 경로 |
 | `android.javaHome` | `~/.sdkman/candidates/java/17.0.20-tem` | JDK 17 경로 |
 | `fvmVersions` | `~/fvm/versions` | fvm이 Flutter를 설치하는 폴더 |
-| `apps.*.serial` | `emulator-5554` | `adb devices`에 나오는 기기 이름 |
+| `apps.app.serial`, `apps.tvapp.serial` | `emulator-5554` | `adb devices`에 나오는 기기 이름 |
+| `accountsEnv` | `~/.config/cmb-dev/accounts.env` | 계정 파일을 다른 곳에 두었다면 그 경로 |
 
-안드로이드 시나리오(`scenarios/**/*.sh`)도 파일 안에 `A_SERIAL=emulator-5554`를 직접 적고 있다. 기기 이름이 다르면 시나리오의 값도 바꾼다.
+안드로이드 시나리오는 기기 이름을 `a_serial <앱키>`로 `serial`에서 읽는다. 한 번만 다른 기기로 돌릴 때는 `QA_SERIAL=emulator-5556 bin/qa run ...`처럼 환경 변수로 덮어쓴다.
 
 ## 5. 안드로이드 준비(폰·TV 앱을 검수할 때만)
 
@@ -164,14 +177,14 @@ bin/qa stop; bin/qa clean
 
 ```bash
 bin/qa wt app && bin/qa build app        # logs/build-app.log, APK 경로 출력
-"$ADB" install -r <출력된 apk 경로>      # project.json 의 adb 경로
+"$ADB" install -r <출력된 apk 경로>      # project(.local).json 의 adb 경로
 bin/qa run projects/cmb/scenarios/2026-6th/app-16162.sh
 ```
 
 ## 8. 6차 시나리오 준비 사항
 
 `projects/cmb/scenarios/2026-6th/`의 시나리오별로 먼저 해 둘 일이다. 각 파일 머리 주석에도 같은 내용이 있다.
-환경 변수는 앞에 붙여 넘긴다(예: `CASE=none bin/qa run .../webmobile-16348.js`).
+환경 변수는 앞에 붙이고(예: `CASE=none bin/qa run .../webmobile-16348.js`), 시나리오 인자는 `--` 뒤에 붙인다(예: `bin/qa run .../cms-16281-16282.js -- content`).
 
 | 시나리오 | 앱 | 준비 | 비고 |
 |---|---|---|---|
@@ -182,7 +195,7 @@ bin/qa run projects/cmb/scenarios/2026-6th/app-16162.sh
 | `ctv-16347.js` | ctv | `qa patch ctv`, `qa serve ctv` | `DEVICE=tizen`이면 워크트리의 `src/api/checkVersion.js` deviceType을 `'tizen'`으로 직접 바꾼다. 문자 전송 요청은 가로챈다 |
 | `ctv-bf-events.js` | ctv | `qa patch ctv`, `qa serve ctv` | 찜·댓글·리뷰를 dev에 실제로 남긴다. 끝나면 정리한다 |
 | `cms-16170.js` | cms | VPN, `qa serve cms` | |
-| `cms-16281-16282.js` | cms·crm | VPN, `qa serve cms crm` | 일부만 돌리려면 `node <파일> content`(또는 `menu`·`auth`·`crm`)로 직접 실행한다(`qa run`은 인자를 넘기지 않는다). 다운로드 이력·로그가 dev에 쌓인다 |
+| `cms-16281-16282.js` | cms·crm | VPN, `qa serve cms crm` | 일부만 돌리려면 `-- content`(또는 `menu`·`auth`·`crm`)를 붙인다. 다운로드 이력·로그가 dev에 쌓인다 |
 | `cms-16281-perf*.js` | cms | VPN, `qa serve cms`, dev에 2026-08 합성 데이터 적재 | 성능 측정 전용 |
 | `crm-16171-16152.js`, `crm-16428.js` | crm | VPN, `qa serve crm`, 계정 파일 `CMB_DEV_MEMBER_KEYWORD` | |
 | `app-16162.sh`, `app-16165.sh`, `app-16345.sh` | app | 폰 에뮬레이터, APK 설치 | 16345는 에뮬레이터 Chrome 원격 디버깅으로 열린 주소를 읽는다 |

@@ -1,6 +1,6 @@
 #!/bin/bash
 # CTVR-16162 레모: 우리동네 클래스(우클) 탭에서 '○○님이 시청 중인 ~' 구역 삭제 (대조군: VOD 탭은 유지)
-source "$QA_KIT/lib/android.sh"; A_SERIAL=emulator-5554; A_PKG=com.cmb.rainbowtv; A_APP=flutter-app; A_TICKET=CTVR-16162
+source "$QA_KIT/lib/android.sh"; A_SERIAL=$(a_serial app); A_PKG=com.cmb.rainbowtv; A_APP=flutter-app; A_TICKET=CTVR-16162
 rm -f $Q/results/$A_APP-$A_TICKET.json
 a_launch
 a_rec_start
