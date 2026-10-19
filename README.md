@@ -68,6 +68,7 @@ await s.close();
 - `check`의 `extra: [{ text, ok }]`로 문구 외 판정(입력 길이 등)을 더한다.
 - 로그인은 `saveLogin`으로 한 번 만들고 `storage`로 재사용한다. 인증 문자처럼 부작용이 있는 로그인은 `maxAgeMin`으로 재사용 기간을 둔다.
 - 대조군(바뀌지 않아야 하는 화면)을 함께 찍는다. "없음" 판정이 우연히 비어 있어서가 아님을 보여 준다.
+- **TV 앱(`kind: web-tv`, 레TB)은 [docs/TV-FOCUS.md](docs/TV-FOCUS.md)를 먼저 읽는다.** 포커스 사고는 화면 문구가 멀쩡해서 `expect`·`absent`로 잡히지 않는다. 포커스 판정은 `extra`로 넣고 화면별 최소 점검 11가지를 돈다.
 
 안드로이드(`.sh`): `source "$QA_KIT/lib/android.sh"`, `A_SERIAL=$(a_serial <앱키>)`와 `A_PKG/A_APP/A_TICKET`을 정한 뒤 `a_launch → a_rec_start → a_check … → a_rec_stop`.
 
