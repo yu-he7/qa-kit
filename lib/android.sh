@@ -23,34 +23,61 @@ a_dirs() { mkdir -p "$Q/shots/$A_APP" "$Q/videos/$A_APP" "$Q/results"; }
 a_rec_start() { a_dirs; adb shell rm -f /sdcard/qa.mp4; (adb shell screenrecord --bit-rate 6000000 --time-limit 180 /sdcard/qa.mp4 >/dev/null 2>&1 &); sleep 1; }
 a_rec_stop() { adb shell pkill -INT screenrecord; sleep 3; adb exec-out cat /sdcard/qa.mp4 > "$Q/videos/$A_APP/$A_TICKET.mp4"; ls -la "$Q/videos/$A_APP/$A_TICKET.mp4"; }
 
-# 스크린샷 + UI 덤프 문구 대조. usage: a_check <nn-id> "<화면 설명>" "기대1|기대2" "없어야1|없어야2"
-a_check() {
-  a_dirs; local id=$1 screen=$2 expect=$3 absent=$4 f="$A_TICKET-$1.png"
-  sleep 1.5
-  adb exec-out screencap -p > "$Q/shots/$A_APP/$f"
-  adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb exec-out cat /sdcard/ui.xml > $A_TMP/ui.xml
-  python3 - "$Q" "$A_APP" "$A_TICKET" "$id" "$screen" "$expect" "$absent" "$f" "$A_PKG" <<'EOF'
+# 사람 TC 연결(선택): A_TC=<케이스 ID> A_TC_JOURNEY=<여정> A_TC_SOURCE=<초안 파일 이름> → 결과 JSON 최상위 tc
+# reason(info·fail 사유): human-judge · blocked-write · wait-time · env · record
+
+# 결과 JSON 에 check 하나를 쓴다(같은 id 는 바꿔 쓴다). usage: _a_record <mode> <id> <screen> <expect> <absent> <shot 파일|''> <note> <reason>
+# mode: check(UI 덤프 대조) · shot(판정 없이 찍기) · info(사진 없음)
+_a_record() {
+  python3 - "$Q" "$A_APP" "$A_TICKET" "${A_PKG:-}" "${A_TC:-}" "${A_TC_JOURNEY:-}" "${A_TC_SOURCE:-}" "$@" <<'EOF'
 import sys, json, os, re, html
-Q, app, ticket, id_, screen, expect, absent, f, pkg = sys.argv[1:]
-xml = open(os.path.join(Q, '.tmp', 'ui.xml'), encoding='utf-8', errors='ignore').read()
-texts = ' '.join(html.unescape(t) for t in re.findall(r'(?:text|content-desc)="([^"]*)"', xml))
-exp = [{'text': t, 'ok': t in texts} for t in expect.split('|') if t]
-abs_ = [{'text': t, 'ok': t not in texts} for t in absent.split('|') if t]
-verdict = 'pass' if all(x['ok'] for x in exp + abs_) else 'fail'
-if not exp and not abs_: verdict = 'info'
-note = ''
-if pkg and f'package="{pkg}"' not in xml: verdict, note = 'fail', f'앱({pkg}) 화면이 아님 — 시나리오 이동 실패'
+Q, app, ticket, pkg, tc, journey, source, mode, id_, screen, expect, absent, f, note, reason = sys.argv[1:]
+REASONS = ('human-judge', 'blocked-write', 'wait-time', 'env', 'record')
+if reason and reason not in REASONS: print(f'알 수 없는 reason: {reason} ({", ".join(REASONS)})', file=sys.stderr)
+exp, abs_ = [], []
+if mode == 'check':
+    xml = open(os.path.join(Q, '.tmp', 'ui.xml'), encoding='utf-8', errors='ignore').read()
+    texts = ' '.join(html.unescape(t) for t in re.findall(r'(?:text|content-desc)="([^"]*)"', xml))
+    exp = [{'text': t, 'ok': t in texts} for t in expect.split('|') if t]
+    abs_ = [{'text': t, 'ok': t not in texts} for t in absent.split('|') if t]
+    verdict = 'pass' if all(x['ok'] for x in exp + abs_) else 'fail'
+    if not exp and not abs_: verdict, reason = 'info', reason or 'human-judge'
+    if pkg and f'package="{pkg}"' not in xml: verdict, reason, note = 'fail', reason or 'env', f'앱({pkg}) 화면이 아님 — 시나리오 이동 실패'
+else:
+    verdict = 'info'
+    if mode == 'shot': reason = reason or 'record'
 p = os.path.join(Q, 'results', f'{app}-{ticket}.json')
 r = json.load(open(p)) if os.path.exists(p) else {'app': app, 'ticket': ticket, 'checks': [], 'errors': []}
-r['checks'] = [c for c in r['checks'] if c['id'] != id_]
-r['checks'].append({'id': id_, 'screen': screen, 'shot': f'shots/{app}/{f}', 'expect': exp, 'absent': abs_, 'verdict': verdict, 'note': note})
+if tc:
+    r['tc'] = {k: v for k, v in (('id', tc), ('journey', journey), ('source', source)) if v}
+c = {'id': id_, 'screen': screen, 'shot': f'shots/{app}/{f}' if f else None, 'expect': exp, 'absent': abs_, 'verdict': verdict, 'note': note}
+if reason and verdict != 'pass': c['reason'] = reason
+r['checks'] = [x for x in r['checks'] if x['id'] != id_] + [c]
 r['checks'].sort(key=lambda c: c['id'])
 v = f'videos/{app}/{ticket}.mp4'
 if os.path.exists(os.path.join(Q, v)): r['video'] = v
 json.dump(r, open(p, 'w'), ensure_ascii=False, indent=2)
-print(verdict.upper(), ticket, id_, ' | '.join(x['text'] for x in exp + abs_ if not x['ok']), note)
+print(verdict.upper(), ticket, id_, ' | '.join(x['text'] for x in exp + abs_ if not x['ok']), note, f'[{c["reason"]}]' if c.get('reason') else '')
 EOF
 }
+
+# 스크린샷 + UI 덤프 문구 대조. usage: a_check <nn-id> "<화면 설명>" "기대1|기대2" "없어야1|없어야2" [reason]
+a_check() {
+  a_dirs; local f="$A_TICKET-$1.png"
+  sleep 1.5
+  adb exec-out screencap -p > "$Q/shots/$A_APP/$f"
+  adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb exec-out cat /sdcard/ui.xml > $A_TMP/ui.xml
+  _a_record check "$1" "$2" "${3:-}" "${4:-}" "$f" "" "${5:-}"
+}
+# 판정 없이 찍기(info, reason 기본 record). usage: a_shot <nn-id> "<화면 설명>" ["<메모>"] [reason]
+a_shot() {
+  a_dirs; local f="$A_TICKET-$1.png"
+  sleep 1.5
+  adb exec-out screencap -p > "$Q/shots/$A_APP/$f"
+  _a_record shot "$1" "$2" "" "" "$f" "${3:-}" "${4:-}"
+}
+# 화면으로 확인할 수 없는 항목(info, 사진 없음). usage: a_info <nn-id> "<화면 설명>" "<사유 메모>" [reason]
+a_info() { a_dirs; _a_record info "$1" "$2" "" "" "" "${3:-}" "${4:-}"; }
 
 # 화면 문구 목록(탐색용)
 a_texts() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb exec-out cat /sdcard/ui.xml | grep -oE '(text|content-desc)="[^"]+"' | sed -E 's/^[a-z-]+="//; s/"$//' | tr '\n' ' ' | cut -c1-${1:-1500}; echo; }

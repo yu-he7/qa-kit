@@ -1,13 +1,14 @@
 #!/bin/bash
 # qa-kit 명령. 실행 폴더(QA_RUN) 하나가 검수 회차 하나다.
-#   qa new <project> <round> [제목]    실행 폴더 생성(~/qa-runs/<project>-<round>), checklist 템플릿 복사
+#   qa new <project> <round> [제목] [--checklist <파일>]   실행 폴더 생성(~/qa-runs/<project>-<round>), checklist 복사(파일 > 회차 > 템플릿)
 #   qa wt <app...>                    대상 저장소를 기준 브랜치로 분리 워크트리 생성 + 의존성 설치(웹) / 빌드(안드로이드)
 #   qa patch <app> | unpatch <app>    QA 전용 로컬 패치 적용·원복(커밋 안 함)
 #   qa serve <app...> | stop          웹 개발 서버 시작(로그: logs/vite-<app>.log) · 모두 종료
 #   qa build <app>                    안드로이드 APK 빌드(.fvmrc 의 Flutter 버전)
 #   qa run <scenario...> [-- 인자...]  시나리오 실행(.js 는 node, .sh 는 bash). QA_RUN·QA_KIT·QA_ADB 와 -- 뒤 인자를 넘긴다
-#   qa note <app> <ticket> <id> <verdict> "<사유>"   사람이 확인한 판정·사유 기록
-#   qa report                         report/index.html 생성
+#   qa note <app> <ticket> <id> <verdict> "<사유>" [--reason <reason>]   사람이 확인한 판정·사유 기록
+#   qa report                         report/index.html 생성(checklist 가 템플릿 그대로면 경고)
+#   qa tc-results [--out <파일>]       TC 단계별 결과 JSON [{tc,step,app,verdict,reason,note,shot}]
 #   qa status                         워크트리·패치·서버·결과 요약
 #   qa clean                          워크트리 제거(결과는 남김)
 set -euo pipefail
@@ -33,7 +34,12 @@ wt_of() { echo "$QA_RUN/wt/$(app_field "$1" repo)"; }
 cmd=${1:-help}; shift || true
 case $cmd in
 new)
-  [ $# -ge 2 ] || die "usage: qa new <project> <round> [제목]"
+  cl=; pos=()
+  while [ $# -gt 0 ]; do case $1 in --checklist) [ $# -ge 2 ] || die "--checklist 파일이 없습니다"; cl=$2; shift 2 ;; *) pos+=("$1"); shift ;; esac; done
+  set -- "${pos[@]+"${pos[@]}"}"
+  [ $# -ge 2 ] || die "usage: qa new <project> <round> [제목] [--checklist <파일>]"
+  [ -z "$cl" ] || [ -f "$cl" ] || die "checklist 파일 없음: $cl"
+  [ -z "$cl" ] || python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert isinstance(d.get('items'), list)" "$cl" 2>/dev/null || die "checklist 형식 오류(items 배열 필요): $cl"
   proj=$1 round=$2 title=${3:-"$round 검수 결과"}
   [ -f "$KIT/projects/$proj/project.json" ] || die "프로젝트 없음: $proj"
   dir=${QA_RUNS:-$HOME/qa-runs}/$proj-$round
@@ -47,8 +53,12 @@ json.dump({'project': proj, 'round': rnd, 'title': title, 'base': p.get('base'),
            'createdAt': __import__('datetime').datetime.now().isoformat(timespec='seconds')},
           open(f'{d}/run.json', 'w'), ensure_ascii=False, indent=2)
 EOF
-  src="$KIT/projects/$proj/checklists/$round.json"; [ -f "$src" ] || src="$KIT/templates/checklist.json"
-  [ -f "$dir/checklist.json" ] || cp "$src" "$dir/checklist.json"
+  # checklist: --checklist 파일 > 회차 체크리스트 > 템플릿. 이미 채운 checklist.json 은 덮어쓰지 않는다(템플릿 그대로면 바꾼다).
+  is_tpl() { python3 -c "import json,re,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if not any(not re.fullmatch(r'PROJ-0000', i.get('ticket') or '') for i in d.get('items') or []) else 1)" "$1" 2>/dev/null; }
+  src=$cl; [ -n "$src" ] || src="$KIT/projects/$proj/checklists/$round.json"; [ -f "$src" ] || src="$KIT/templates/checklist.json"
+  if [ ! -f "$dir/checklist.json" ] || { [ -n "$cl" ] && is_tpl "$dir/checklist.json"; }; then cp "$src" "$dir/checklist.json"; echo "checklist: $src"
+  elif [ -n "$cl" ] && ! cmp -s "$cl" "$dir/checklist.json"; then die "이미 채운 checklist.json 이 있습니다: $dir/checklist.json (직접 바꾸십시오)"; fi
+  is_tpl "$dir/checklist.json" && echo "주의: checklist.json 이 템플릿(PROJ-0000)입니다. 채우지 않으면 모든 결과가 checklist 밖으로 붙습니다. --checklist <파일> 로 다시 실행하거나 직접 채우십시오." >&2
   chmod 700 "$dir/state"
   echo "실행 폴더: $dir"; echo "export QA_RUN=$dir"
   ;;
@@ -117,6 +127,10 @@ run)
   ;;
 note) need_run; python3 "$KIT/lib/note.py" "$@" ;;
 report) need_run; (cd "$KIT" && node lib/report.js) ;;
+tc-results)
+  need_run; args=()
+  while [ $# -gt 0 ]; do case $1 in --out) [ $# -ge 2 ] || die "usage: qa tc-results [--out <파일>]"; args+=(--out "$(realpath -m "$2")"); shift 2 ;; *) die "usage: qa tc-results [--out <파일>]" ;; esac; done
+  (cd "$KIT" && node lib/tc-results.js "${args[@]+"${args[@]}"}") ;;
 status)
   need_run; echo "run: $QA_RUN ($(pj "r['title']"))"
   for W in "$QA_RUN"/wt/*/; do [ -d "$W/.git" ] || [ -f "$W/.git" ] || continue; echo "  wt $(basename "$W") $(git -C "$W" log --oneline -1 | cut -c1-60) · 변경 $(git -C "$W" status -s | wc -l)"; done
@@ -131,5 +145,5 @@ clean)
     git -C "$W" worktree remove --force "$W" && echo "제거 $W"
   done
   ;;
-*) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//' ;;
+*) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
